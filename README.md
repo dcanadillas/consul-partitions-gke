@@ -174,6 +174,7 @@ I have included also in this repo the similar example files definitions used by 
 * In directory `./crds` you will find all the `yaml` files for Consul configuration CRDs
 * `./consul-values/consul-dc1-servers.yaml` contains the values yaml to deploy a Consul control plane with `default` partition
 * `./consul-values/consul-second-partition.yaml` contains a values yaml example to deploy Consul admin partition named `second`
+* Directory `./demo-app` contains the services manifests to deploy in K8s
 
 ## Demoing
 

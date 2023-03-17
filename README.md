@@ -135,7 +135,7 @@ You can access to the Consul UI by using the `LoadBalancer` IP of the `consul-ui
 $ kubectl get svc consul-ui \
   -n consul \
   -o jsonpath='{.status.loadBalancer.ingress[].ip}' \
-  --kubeconfig /tmp/<gke_cluster_name>-kube.config
+  --kubeconfig /tmp/<gke_cluster_name_1>-kube.config
 ```
 
 If you go to that IP in your browser you can check that both partitions are accessible:
@@ -143,6 +143,14 @@ If you go to that IP in your browser you can check that both partitions are acce
 ![Consul_Default_Partition](./img/consul-default-partition.png)
 
 ![Consul_Second_Partition](./img/consul-second-partition.png)
+
+To login to Consul for all the permission get the bootstrap token from the K8s secret:
+```
+kubectl get secret consul-bootstrap-token \
+-n consul \
+-o jsonpath='{.data.token}' \
+--kubeconfig /tmp/<gke_cluster_name_1>-kube.config | base64 -d
+```
 
 
 ## Files and assets

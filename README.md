@@ -58,6 +58,7 @@ The script is going to ask for confirmation for several steps:
   ==> Selecting K8s deployment type...
   Are you on "Minikube" or "GKE"?: GKE
   ```
+
 * The script will show you the info from both GKE clusters and will create `consul` namespaces (you will see a `kubectl` error message if the namespace is already created, but you can ignore that) and it will install [Consul API Gateway objects](https://developer.hashicorp.com/consul/docs/api-gateway/install) (it is not needed in the demo, but it is installed in case you want to configure it later).
 * It will stop before installing Consul in the first cluster. **Press `Enter` to continue** (`Ctrl-C` if you want to cancel).
   ```
@@ -86,6 +87,7 @@ The script is going to ask for confirmation for several steps:
 
   Continue to install Consul (Ctrl-C to cancel)...
   ```
+
 * Consul installation will start, but it will ask you to *"Proceed with installation"*. **Press `Enter` or `Y`** to continue
 * Consul servers in the first GKE cluster will be installed. Then you will see *Continue to install Consul partition "second"...*. **Press `Enter` to continue** (`Ctrl-C` if you want to cancel).
 > You will probably see some "secrets not found" errors, but you can ignore them. It is trying to delete some secrets from previous installations in the namespace in case they exist.
@@ -103,8 +105,8 @@ The script is going to ask for confirmation for several steps:
 
   Continue to install Consul partition "second" (Ctrl-C to cancel)...
   ```
-  * Consul Admin Partition will be installed in the second GKE cluster. Also, all yaml files for the Consul configuration CRDs will be created in `/tmp/cross_partition_demo/` directory
-  * After being installed the Admin Partition in the second GKE cluster, last step is to deploy the saved yaml files in the correct GKE clusters. **Type "yes"** when asked to deploy:
+* Consul Admin Partition will be installed in the second GKE cluster. Also, all yaml files for the Consul configuration CRDs will be created in `/tmp/cross_partition_demo/` directory
+* After being installed the Admin Partition in the second GKE cluster, last step is to deploy the saved yaml files in the correct GKE clusters. **Type "yes"** when asked to deploy:
   ```
   ==> Saving yaml files in "/tmp/cross_partition_demo"...
 
@@ -125,6 +127,23 @@ The script is going to ask for confirmation for several steps:
   exportedservices.consul.hashicorp.com/second created
   serviceintentions.consul.hashicorp.com/frontend-default-to-backend-second created
   ```
+
+## Access Consul and partitions
+
+You can access to the Consul UI by using the `LoadBalancer` IP of the `consul-ui` service in the first GKE cluster (change):
+```
+$ kubectl get svc consul-ui \
+  -n consul \
+  -o jsonpath='{.status.loadBalancer.ingress[].ip}' \
+  --kubeconfig /tmp/<gke_cluster_name>-kube.config
+```
+
+If you go to that IP in your browser you can check that both partitions are accessible:
+
+![Consul_Default_Partition](./img/consul-default-partition.png)
+
+![Consul_Second_Partition](./img/consul-second-partition.png)
+
 
 ## Files and assets
 
@@ -153,18 +172,10 @@ So you can use different terminal panes/windows connected to your different GKE 
 
 I have included also in this repo the similar example files definitions used by the script:
 * In directory `./crds` you will find all the `yaml` files for Consul configuration CRDs
-* `./consul-dc1-servers.yaml` contains the values yaml to deploy a Consul control plane with `default` partition
-* `./consul-second-partition.yaml` contains a values yaml example to deploy Consul admin partition named `second`
+* `./consul-values/consul-dc1-servers.yaml` contains the values yaml to deploy a Consul control plane with `default` partition
+* `./consul-values/consul-second-partition.yaml` contains a values yaml example to deploy Consul admin partition named `second`
 
 ## Demoing
-
-You can access to the Consul UI by using the `LoadBalancer` IP of the `consul-ui` service in the first GKE cluster (change):
-```
-$ kubectl get svc consul-ui \
-  -n consul \
-  -o jsonpath='{.status.loadBalancer.ingress[].ip}' \
-  --kubeconfig /tmp/<gke_cluster_name>-kube.config
-```
 
 When the script is executed successfully you should have the following services running:
 * A `frontend` service running in admin partition `default`, which is deployed in the first GKE cluster

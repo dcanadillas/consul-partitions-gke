@@ -1,0 +1,83 @@
+apiGateway:
+  enabled: true
+  image: hashicorp/consul-api-gateway:0.5.2
+  logLevel: debug
+  managedGatewayClass:
+    enabled: true
+    serviceType: LoadBalancer
+client:
+  enabled: false
+  grpc: true
+connectInject:
+  consulNamespaces:
+    mirroringK8S: true
+  enabled: true
+  transparentProxy:
+    defaultEnabled: true
+controller:
+  enabled: true
+global:
+  acls:
+    bootstrapToken:
+      secretKey: token
+      secretName: consul-bootstrap-token
+    manageSystemACLs: true
+  adminPartitions:
+    enabled: true
+  datacenter: dc1
+  enableConsulNamespaces: true
+  enabled: true
+  enterpriseLicense:
+    secretKey: key
+    secretName: consul-ent-license
+  image: hashicorp/consul-enterprise:1.15.1-ent
+  imageK8S: hashicorp/consul-k8s-control-plane:1.1.0
+  logLevel: debug
+  metrics:
+    enableGatewayMetrics: true
+    enabled: true
+  name: consul
+  peering:
+    enabled: true
+  tls:
+    enableAutoEncrypt: true
+    enabled: true
+    verify: false
+ingressGateways:
+  defaults:
+    replicas: 1
+    service:
+      ports:
+      - nodePort: null
+        port: 443
+      - nodePort: null
+        port: 8080
+      type: LoadBalancer
+  enabled: true
+  gateways:
+  - name: ingress-gateway
+meshGateway:
+  enableHealthChecks: false
+  enabled: true
+  replicas: 1
+  service:
+    enabled: true
+prometheus:
+  enabled: true
+server:
+  bootstrapExpect: 3
+  enabled: true
+  extraConfig: |
+    {
+      "acl": {
+        "tokens": {
+          "default": "ConsulR0cks"
+        }
+      }
+    }
+  replicas: 3
+ui:
+  enabled: true
+  service:
+    enabled: true
+    type: LoadBalancer

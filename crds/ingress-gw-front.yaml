@@ -1,0 +1,24 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: IngressGateway
+metadata:
+  name: ingress-gateway
+spec:
+  listeners:
+    - port: 8080
+      protocol: http
+      services:
+        - name: frontend
+          hosts: 
+          - "*"
+---
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: igw-to-front
+spec:
+  destination:
+    name: frontend
+  sources:
+   - name: ingress-gateway
+     action: allow
+

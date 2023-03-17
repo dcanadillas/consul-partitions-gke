@@ -1,0 +1,11 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: frontend-default-to-backend-second
+spec:
+  destination:
+    name: backend
+  sources:
+   - name: frontend
+     action: allow
+     partition: default

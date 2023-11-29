@@ -352,20 +352,20 @@ client:
 controller:
   enabled: true
 
-ingressGateways:
-  enabled: true
-  defaults:
-    replicas: 1
-    service:
-      type: LoadBalancer
-      ports:
-        - port: 443
-          nodePort: null
-        - port: 8080
-          nodePort: null
-    # affinity: ""
-  gateways:
-    - name: ingress-gateway
+# ingressGateways:
+#   enabled: true
+#   defaults:
+#     replicas: 1
+#     service:
+#       type: LoadBalancer
+#       ports:
+#         - port: 443
+#           nodePort: null
+#         - port: 8080
+#           nodePort: null
+#     # affinity: ""
+#   gateways:
+#     - name: ingress-gateway
 terminatingGateways:
   enabled: true
 EOF

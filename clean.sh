@@ -11,7 +11,9 @@ CONSUL_NAMESPACE="consul"
 CONSUL_CA_CERT_SECRET="server-ca-cert"
 CONSUL_CA_KEY_SECRET="server-ca-key"
 CONSUL_PARTITION="second"
-DEMO_TMP="/tmp/cross_partition_demo"
+SCRIPT=$(realpath "$0")
+SCRIPTPATH="$(dirname "$SCRIPT")"
+DEMO_APP="$SCRIPTPATH/demo-app"
 
 # Color
 RED=$(tput setaf 1)
@@ -46,12 +48,17 @@ uninstall_consul () {
 
 delete_resources () {
   echo -e "${BLUE}Deleting resources from $1...${NC}"
-  kubectl delete -n $CONSUL_NAMESPACE serviceintentions $1 --kubeconfig $2 || true
-  kubectl delete -n $CONSUL_NAMESPACE httproute $1 --kubeconfig $2 || true
-  kubectl delete -n $CONSUL_NAMESPACE gateway $1 --kubeconfig $2 || true
-  kubectl delete -n $CONSUL_NAMESPACE proxydefaults $1 --kubeconfig $2 || true
+  kubectl delete -A serviceintentions --all --kubeconfig $1 || true
+  kubectl delete -A httproute --all --kubeconfig $1 || true
+  kubectl delete -A gateway --all --kubeconfig $1 || true
+  kubectl delete -A proxydefaults --all --kubeconfig $1 || true
+  kubectl delete -A exportedservices --all --kubeconfig $1 || true
 }
 
+delete_app () {
+  echo -e "${BLUE}Deleting demo services from $1...${NC}"
+  kubectl delete -f $DEMO_APP/ --kubeconfig $1 || true
+}
 
 echo -e "\n${GRN}==> Selecting K8s deployment type...${NC}"
 read -p "${YELL}Are you on \"Minikube\" or \"GKE\"?: ${NC}" K8S_TYPE
@@ -92,15 +99,19 @@ case $K8S_TYPE in
 esac
 
 echo -e "\n${GRN}==> Cleaning $CLUSTER1...${NC}"
-delete_resources --all $KUBECONFIG1
-kubectl delete namespace $CONSUL_NAMESPACE --kubeconfig $KUBECONFIG1 || true
+delete_resources $KUBECONFIG1
+
 
 echo -e "\n${GRN}==> Cleaning $CLUSTER2...${NC}"
-delete_resources --all $KUBECONFIG2
-kubectl delete namespace $CONSUL_NAMESPACE --kubeconfig $KUBECONFIG2 || true
+delete_resources $KUBECONFIG2
+
 
 echo -e "\n${GRN}==> Uninstalling Consul from $CLUSTER1...${NC}"
 uninstall_consul $CLUSTER1 $KUBECONFIG1
+kubectl delete namespace $CONSUL_NAMESPACE --kubeconfig $KUBECONFIG1 || true
+delete_app $KUBECONFIG1
 
 echo -e "\n${GRN}==> Uninstalling Consul from $CLUSTER2...${NC}"
 uninstall_consul $CLUSTER2 $KUBECONFIG2
+kubectl delete namespace $CONSUL_NAMESPACE --kubeconfig $KUBECONFIG2 || true
+delete_app $KUBECONFIG2

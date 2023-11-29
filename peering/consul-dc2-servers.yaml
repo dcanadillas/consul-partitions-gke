@@ -17,7 +17,7 @@ global:
     manageSystemACLs: true
   adminPartitions:
     enabled: true
-  datacenter: dc1
+  datacenter: dc2
   enableConsulNamespaces: true
   enabled: true
   enterpriseLicense:

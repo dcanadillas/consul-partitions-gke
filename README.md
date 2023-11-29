@@ -26,7 +26,7 @@ There are some requirements to execute the script:
 * **Google Cloud credentials** configured in your terminal:
   ```
   $ gcloud auth login
-  $ gcloud config set projec <your_gcp_project_id>
+  $ gcloud config set project <your_gcp_project_id>
   ```
 * A **Consul Enterprise license**, that should be set in the `CONSUL_LICENSE` environment variable, or setting the path of the license file in the `CONSUL_LICENSE_PATH` environment variable. 
 
@@ -268,7 +268,9 @@ $ curl http://$(kubectl get svc consul-ingress-gateway -n consul -o jsonpath='{.
 RBAC: access denied
 ```
 
+## Peering (WIP)
 
+If you add a third K8s cluster you can also test the peering connection. You can follow the added guided [in here](./peering/Peering.md).
 
 
 

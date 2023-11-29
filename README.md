@@ -30,7 +30,7 @@ There are some requirements to execute the script:
   ```
 * A **Consul Enterprise license**, that should be set in the `CONSUL_LICENSE` environment variable, or setting the path of the license file in the `CONSUL_LICENSE_PATH` environment variable. 
 
-## Exetuting the script
+## Executing the script
 
 Check that `gcloud` is configured and that you can list the GKE clusters. Here is an example:
 

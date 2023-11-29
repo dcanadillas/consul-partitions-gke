@@ -6,8 +6,8 @@ CLUSTER1=$1
 CLUSTER2=$2
 API_GW_VERSION="0.5.2"
 CONSUL_LICENSE=""
-CONSUL_K8S_VERSION="1.1.0"
-CONSUL_VERSION="1.15.1-ent"
+CONSUL_K8S_VERSION="1.3.0"
+CONSUL_VERSION="1.17.0-ent"
 CONSUL_TOKEN="$(uuidgen)"
 DC1="dc1"
 # DC2="dc2"
@@ -17,25 +17,34 @@ CONSUL_CA_KEY_SECRET="server-ca-key"
 CONSUL_PARTITION="second"
 DEMO_TMP="/tmp/cross_partition_demo"
 
+# Color
+RED=$(tput setaf 1)
+BLUE=$(tput setaf 4)
+DGRN=$(tput setaf 2)
+GRN=$(tput setaf 10)
+YELL=$(tput setaf 3)
+NC=$(tput sgr0) #No color
+
+
 if [ -z "$1" ] || [ -z "$2" ];then
-  echo -e "Need to define GKE clusters or Minikube profiles as arguments.\n\t\"$ $0 [<gke_name_1> <gke_name_2> || <minikube_profile_1> <minikube_profile_2>]\""
+  echo -e "${RED}Need to define GKE clusters or Minikube profiles as arguments.\n\t\"$ $0 [<gke_name_1> <gke_name_2> || <minikube_profile_1> <minikube_profile_2>]\"${NC}"
   exit 1
 fi
 
 if ! hash gcloud;then
-  echo -e "There is no \"gcloud\" command in $PATH...\n"
+  echo -e "${RED}There is no \"gcloud\" command in $PATH...${NC}\n"
   exit 1
 fi
 if ! hash kubectl;then
-  echo "Please install \"kubectl\" command in $PATH...\n"
+  echo "${RED}Please install \"kubectl\" command in $PATH...${NC}\n"
   exit 1
 fi
 if ! hash jq;then 
-  echo "Please install \"jq\" command in $PATH...\n"
+  echo "${RED}Please install \"jq\" command in $PATH...${NC}\n"
   exit 1
 fi
 if ! hash helm;then 
-  echo "Please install \"Helm\"...\n"
+  echo "${RED}Please install \"Helm\"...${NC}\n"
   exit 1
 fi
 
@@ -52,7 +61,7 @@ else
   CONSUL_LICENSE="$(cat $CONSUL_LICENSE_PATH)"
 fi
 
-echo -e "\n==> Checking Consul License..."
+echo -e "\n${GRN}==> Checking Consul License...${NC}"
 # Showing only the first 15 chars of the license
 echo "CONSUL_LICENSE=$(echo ${CONSUL_LICENSE:0:5}... ...${CONSUL_LICENSE:0-15})"
 
@@ -89,8 +98,8 @@ else
   exit 1
 fi
 
-echo -e "\n==> Selecting K8s deployment type..."
-read -p "Are you on \"Minikube\" or \"GKE\"?: " K8S_TYPE
+echo -e "\n${GRN}==> Selecting K8s deployment type...${NC}"
+read -p "${YELL}Are you on \"Minikube\" or \"GKE\"?: ${NC}" K8S_TYPE
 echo ""
 
 case $K8S_TYPE in
@@ -107,15 +116,17 @@ case $K8S_TYPE in
     ;;
   GKE)
     # Fetching locations in a variable for the two clusters
-    CLUSTER1_ZONE="$(gcloud container clusters list --filter="name:$CLUSTER1" --format json | jq -r .[].location)"
-    CLUSTER2_ZONE="$(gcloud container clusters list --filter="name:$CLUSTER2" --format json | jq -r .[].location)"
+    CLUSTER1_ZONE="$(gcloud container clusters list --filter "name:$CLUSTER1" --format "[]value(location)")"
+    CLUSTER2_ZONE="$(gcloud container clusters list --filter="name:$CLUSTER2" --format "[]value(location)")"
 
     # Fetching clusters endpoints
-    CLUSTER1_ENDPOINT="$(gcloud container clusters list --filter="name:$CLUSTER1" --format json | jq -r .[].endpoint)"
-    CLUSTER2_ENDPOINT="$(gcloud container clusters list --filter="name:$CLUSTER2" --format json | jq -r .[].endpoint)"
+    CLUSTER1_ENDPOINT="$(gcloud container clusters list --filter="name:$CLUSTER1" --format "[]value(endpoint)")"
+    CLUSTER2_ENDPOINT="$(gcloud container clusters list --filter="name:$CLUSTER2" --format "[]value(endpoint)")"
 
     # Creating 2 different Kubeconfigs by getting credentials from GKE with GCloud
+    echo "Getting credentials for cluster \"$CLUSTER1\"..."
     KUBECONFIG=$KUBECONFIG1 gcloud container clusters get-credentials $CLUSTER1 --zone $CLUSTER1_ZONE
+    echo "Getting credentials for cluster \"$CLUSTER2\"..."
     KUBECONFIG=$KUBECONFIG2 gcloud container clusters get-credentials $CLUSTER2 --zone $CLUSTER2_ZONE
     K8S_PORT="443"
     ;;
@@ -128,15 +139,15 @@ esac
 
 
 
-echo -e "\n==> Information from K8s Cluster 1..."
+echo -e "\n${GRN}==> Information from K8s Cluster 1...${NC}}"
 kubectl cluster-info --kubeconfig="$KUBECONFIG1"
 
-echo -e "\n==> Information from K8s Cluster 2..."
+echo -e "\n${GRN}==> Information from K8s Cluster 2...${NC}"
 kubectl cluster-info --kubeconfig=$KUBECONFIG2
 
 configk8s () {
   kubectl create ns consul --kubeconfig=$1
-  kubectl apply --kustomize="github.com/hashicorp/consul-api-gateway/config/crd?ref=v$API_GW_VERSION" --kubeconfig=$1
+  # kubectl apply --kustomize="github.com/hashicorp/consul-api-gateway/config/crd?ref=v$API_GW_VERSION" --kubeconfig=$1
   kubectl create secret generic consul-ent-license --from-literal key=$CONSUL_LICENSE -n consul --kubeconfig=$1
   kubectl create secret generic consul-bootstrap-token --from-literal token=$CONSUL_TOKEN -n consul --kubeconfig=$1
 }
@@ -182,7 +193,9 @@ server:
     {
       "acl": {
         "tokens": {
-          "default": "$CONSUL_TOKEN"
+          "initial_management": "$CONSUL_TOKEN",
+          "dns": "$CONSUL_TOKEN",
+          "agent": "$CONSUL_TOKEN"
         }
       }
     }
@@ -217,28 +230,30 @@ controller:
 prometheus:
   enabled: true
 
-ingressGateways:
-  enabled: true
-  defaults:
-    replicas: 1
-    service:
-      type: LoadBalancer
-      ports:
-        - port: 443
-          nodePort: null
-        - port: 8080
-          nodePort: null
-    # affinity: ""
-  gateways:
-    - name: ingress-gateway
+# ingressGateways:
+#   enabled: true
+#   defaults:
+#     replicas: 1
+#     service:
+#       type: LoadBalancer
+#       ports:
+#         - port: 443
+#           nodePort: null
+#         - port: 8080
+#           nodePort: null
+#     # affinity: ""
+#   gateways:
+#     - name: ingress-gateway
+# terminatingGateways:
+#   enabled: true
 
-apiGateway:
-  enabled: true
-  logLevel: debug
-  image: hashicorp/consul-api-gateway:$API_GW_VERSION
-  managedGatewayClass:
-    enabled: true
-    serviceType: LoadBalancer
+# apiGateway:
+#   enabled: true
+#   logLevel: debug
+#   image: hashicorp/consul-api-gateway:$API_GW_VERSION
+#   managedGatewayClass:
+#     enabled: true
+#     serviceType: LoadBalancer
 EOF
 
   ./consul-k8s install -namespace $CONSUL_NAMESPACE -f /tmp/consul-$1.yaml -kubeconfig $2
@@ -258,7 +273,7 @@ install_partition () {
   local external_ip=""
 
   while [ -z $external_ip ]; do 
-    echo "Waiting for end point..."
+    echo "Waiting for endpoint..."
     external_ip=$(kubectl get svc consul-expose-servers --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}" -n $CONSUL_NAMESPACE --kubeconfig $KUBECONFIG1)
     [ -z "$external_ip" ] && sleep 5
   done
@@ -351,6 +366,8 @@ ingressGateways:
     # affinity: ""
   gateways:
     - name: ingress-gateway
+terminatingGateways:
+  enabled: true
 EOF
 
   helm repo add hashicorp https://helm.releases.hashicorp.com
@@ -594,48 +611,46 @@ deploy_demoapp () {
 
 
 # FUN STARTS HERE
-
-
 curl -Ls https://releases.hashicorp.com/consul-k8s/${CONSUL_K8S_VERSION}/consul-k8s_${CONSUL_K8S_VERSION}_${ARCH_FILE}.zip -o consul_k8s.zip
 unzip -o consul_k8s.zip
 
-echo -e "\n==> Configuring K8s cluster $CLUSTER1"
+echo -e "\n${GRN}==> Configuring K8s cluster $CLUSTER1... ${NC}"
 configk8s $KUBECONFIG1
-echo -e "\n==> Configuring K8s cluster $CLUSTER2"
+echo -e "\n${GRN}==> Configuring K8s cluster $CLUSTER2... ${NC}"
 configk8s $KUBECONFIG2
 
 echo ""
-read -p "Continue to install Consul (Ctrl-C to cancel)..."
+read -p "${YELL}Continue to install Consul (Ctrl-C to cancel)...${NC}"
 echo ""
 
 # ---- Installing Consul in firts K8s cluster----
-echo -e "\n==> Installing Consul \"$DC1\" in K8s cluster \"$CLUSTER1\""
+echo -e "\n${GRN}==> Installing Consul \"$DC1\" in K8s cluster \"$CLUSTER1\"... ${NC}"
 install_consul $DC1 $KUBECONFIG1
 # ---------------------------
 
 # ---- Creating required secret in second K8s cluster----
-echo -e "\n==> Copying required K8s secrets for the Admin Partition installation..."
+echo -e "\n${GRN}==> Copying required K8s secrets for the Admin Partition installation... ${NC}"
 copy_secrets $KUBECONFIG1 $KUBECONFIG2
 # ---------------------------
 
 
-echo -e "\n==> Listing pods and secrets in namespace \"$CONSUL_NAMESPACE\" in cluster \"$CLUSTER1\"..."
+echo -e "\n${GRN}==> Listing pods and secrets in namespace \"$CONSUL_NAMESPACE\" in cluster \"$CLUSTER1\"... ${NC}"
 kubectl get po,secrets -n $CONSUL_NAMESPACE --kubeconfig $KUBECONFIG1
 
 echo ""
-read -p "Continue to install Consul partition \"$CONSUL_PARTITION\" (Ctrl-C to cancel)... "
+read -p "${YELL}Continue to install Consul partition \"$CONSUL_PARTITION\" (Ctrl-C to cancel)... ${NC}"
 echo ""
 
 
-echo -e "\n==> Installing Consul partition \"$CONSUL_PARTITION\" in K8s cluster \"$CLUSTER2\"..."
+echo -e "\n${GRN}==> Installing Consul partition \"$CONSUL_PARTITION\" in K8s cluster \"$CLUSTER2\"... ${NC}"
 install_partition $DC1 $KUBECONFIG2
 
 
-echo -e "\n==> Saving yaml files in \"$DEMO_TMP\"..."
+echo -e "\n${GRN}==> Saving yaml files in \"$DEMO_TMP\"... ${NC}"
 create_demo
 
 echo ""
-read -p "Do you want to deploy demo applications manifests in \"$DEMO_TMP\"? (You need to type: \"yes\" or \"y\"): " DEPLOY_APP
+read -p "${YELL}Do you want to deploy demo applications manifests in \"$DEMO_TMP\"? (You need to type: \"yes\" or \"y\"): ${NC}" DEPLOY_APP
 echo "" 
 
 case $DEPLOY_APP in
@@ -643,6 +658,6 @@ case $DEPLOY_APP in
     deploy_demoapp
     ;;
   *)
-    echo -e "\nDon't forget to deploy your yaml files in \"$DEMO_TMP\"...\n"
+    echo -e "\n${DGRN}Don't forget to deploy your yaml files in \"$DEMO_TMP\"... ${NC}\n"
     ;;
 esac

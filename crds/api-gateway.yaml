@@ -1,0 +1,33 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+ name: api-gateway
+ namespace: default
+spec:
+ gatewayClassName: consul
+ listeners:
+ - protocol: HTTPS
+   port: 9443
+   name: https
+   allowedRoutes:
+     namespaces:
+       from: Same
+   tls:
+     certificateRefs:
+       - name: consul-server-cert
+         namespace: consul
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: ReferenceGrant
+metadata:
+  name: consul-reference-grant
+  namespace: consul
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    namespace: default
+  to:
+  - group: ""
+    kind: Secret
+    name: consul-server-cert

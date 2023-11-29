@@ -152,7 +152,6 @@ kubectl get secret consul-bootstrap-token \
 --kubeconfig /tmp/<gke_cluster_name_1>-kube.config | base64 -d
 ```
 
-
 ## Files and assets
 
 The script is saving all required CRDs yaml files to connect `frontend` and `backend` services in the directory `/tmp/cross_partition_demo`:
@@ -190,47 +189,81 @@ When the script is executed successfully you should have the following services 
 * A `frontend` service running in admin partition `default`, which is deployed in the first GKE cluster
 * A `backend` service running in admin partition `second`, which is deployed in the second GKE cluster
 
-You can check that the `frontend` service in one partition can reach `backend` service in the second partition in several ways. You can check within the `frontend` pod just by `curl http://backend.virtual.backend.second.ap:8080` and getting the response. But let's use the Ingress Gateway deployed in Consul to access from the outside. 
+You can check that the `frontend` service in one partition can reach `backend` service in the second partition in several ways. You can check within the `frontend` pod just by `curl http://backend.virtual.second.ap.consul:8080` and getting the response. But let's use the Ingress Gateway deployed in Consul to access from the outside. 
 
-Let's configure the `Ingress Gateway` in the first GKE cluster to access the `frontend` service and create a Consul intention to allow the communication (be sure to run this using the kubeconfig file from the first GKE cluster):
+Let's configure the `API Gateway` in the first GKE cluster to access the `frontend` service and create a Consul intention to allow the communication (be sure to run this using the kubeconfig file from the first GKE cluster).
+
+First, we deploy the API Gateway:
 
 ```
 kubeclt apply -f <<EOF
-apiVersion: consul.hashicorp.com/v1alpha1
-kind: IngressGateway
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
 metadata:
-  name: ingress-gateway
+ name: api-gateway
+ namespace: default
 spec:
-  listeners:
-    - port: 8080
-      protocol: http
-      services:
-        - name: frontend
-          hosts: 
-          - "*"
+ gatewayClassName: consul
+ listeners:
+ - protocol: HTTPS
+   port: 9443
+   name: https
+   allowedRoutes:
+     namespaces:
+       from: Same
+   tls:
+     certificateRefs:
+       - name: consul-server-cert
+         namespace: consul
+```
+
+Because we are using a HTTPS listener, let's deploy a `ReferenceGrant` that let the listener to access the certificate to expose:
+
+```
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: ReferenceGrant
+metadata:
+  name: consul-reference-grant
+  namespace: consul
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    namespace: default
+  to:
+  - group: ""
+    kind: Secret
+    name: consul-server-cert
+
+```
+
+And we need to create the Consul intention to allow communication in the mesh between the API Gateway and the `frontend` service:
+```
 ---
 apiVersion: consul.hashicorp.com/v1alpha1
 kind: ServiceIntentions
 metadata:
-  name: igw-to-front
+  name: apigw-to-frontend
 spec:
   destination:
     name: frontend
   sources:
-   - name: ingress-gateway
+   - name: api-gateway
      action: allow
+     partition: default
 EOF
 ```
 
-After deploying the ingress-gateway you can check the connectivity (using the kubeconfig for the first GKE cluster,  `export KUBECONFIG=/tmp/<gke_cluster_name_1>-kube.config`):
+After deploying the API Gateway you can check the connectivity (using the kubeconfig for the first GKE cluster,  `export KUBECONFIG=/tmp/<gke_cluster_name_1>-kube.config`):
 ```
-$ curl http://$(kubectl get svc consul-ingress-gateway -n consul -o jsonpath='{.status.loadBalancer.ingress[].ip}'):8080/full
+$ curl -k https://$(kubectl get svc api-gateway -o jsonpath='{.status.loadBalancer.ingress[].ip}'):9443/full
 Hello from beautiful frontend World and... Hello from backend World
 ```
 
-Then, you can delete the Consul intention and check that `backend` cannot be reached  anymore from `frontend`:
+Then, you can delete the Consul intention and check that `backend` cannot be reached  anymore from `frontend` (probably you need to run twice the `curl` command):
 ```
-$ kubectl delete serviceintentions igw-to-front
+$ kubectl delete serviceintentions apigw-to-frontend
 $ curl http://$(kubectl get svc consul-ingress-gateway -n consul -o jsonpath='{.status.loadBalancer.ingress[].ip}'):8080/full
 RBAC: access denied
 ```

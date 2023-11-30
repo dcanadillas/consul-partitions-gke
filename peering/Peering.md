@@ -1,4 +1,13 @@
 # Consul Cluster Peering
+
+## Install Consul Cluster in a third K8s cluster
+
+```
+consul-k8s install -f peering/consul-dc2-servers.yaml
+```
+
+## Create and configure Peering
+
 Let's configure the Peer through Mest Gateways in the two K8s clusters of default partition:
 ```
 kubectl apply -f peering/mesh-peering.yaml --kubeconfig $KUBECONFIG_DC1
@@ -31,7 +40,7 @@ kubectl apply -f peering/peering-dialer.yaml --kubeconfig $KUBECONFIG_DC2
 
 Deploy the `backend` application now in `dc2`:
 ```
-kubectl apply -f demo-app/backend.yaml --kubeconfig $KUBECONFIG_DC2
+kubectl apply -f demo-app/backend-dc2.yaml --kubeconfig $KUBECONFIG_DC2
 ```
 
 Export the service to DC1:

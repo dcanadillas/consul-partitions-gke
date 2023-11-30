@@ -196,7 +196,7 @@ Let's configure the `API Gateway` in the first GKE cluster to access the `fronte
 First, we deploy the API Gateway:
 
 ```
-kubeclt apply -f <<EOF
+kubectl apply -f - <<EOF
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: Gateway
 metadata:
@@ -215,12 +215,36 @@ spec:
      certificateRefs:
        - name: consul-server-cert
          namespace: consul
+EOF
+```
+
+And create the `http-route`:
+```
+kubectl apply -f - <<EOF
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: frontend-route
+spec:
+  parentRefs:
+  - name: api-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - kind: Service
+      name: frontend
+      namespace: default
+      port: 8080
+EOF
 ```
 
 Because we are using a HTTPS listener, let's deploy a `ReferenceGrant` that let the listener to access the certificate to expose:
 
 ```
----
+kubectl apply -f -<<EOF
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: ReferenceGrant
 metadata:
@@ -235,12 +259,12 @@ spec:
   - group: ""
     kind: Secret
     name: consul-server-cert
-
+EOF
 ```
 
 And we need to create the Consul intention to allow communication in the mesh between the API Gateway and the `frontend` service:
 ```
----
+kubectl apply -f - <<EOF
 apiVersion: consul.hashicorp.com/v1alpha1
 kind: ServiceIntentions
 metadata:

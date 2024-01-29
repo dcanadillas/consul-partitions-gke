@@ -23,6 +23,8 @@ GRN=$(tput setaf 10)
 YELL=$(tput setaf 3)
 NC=$(tput sgr0) #No color
 
+# 
+
 
 if [ -z "$1" ] || [ -z "$2" ];then
   echo -e "${RED}Need to define GKE clusters or Minikube profiles as arguments.\n\t\"$ $0 [<gke_name_1> <gke_name_2> || <minikube_profile_1> <minikube_profile_2>]\"${NC}"
@@ -115,3 +117,4 @@ echo -e "\n${GRN}==> Uninstalling Consul from $CLUSTER2...${NC}"
 uninstall_consul $CLUSTER2 $KUBECONFIG2
 kubectl delete namespace $CONSUL_NAMESPACE --kubeconfig $KUBECONFIG2 || true
 delete_app $KUBECONFIG2
+

@@ -303,9 +303,6 @@ global:
   acls:
     manageSystemACLs: true
     bootstrapToken:
-      secretName: consul-bootstrap-token
-      secretKey: token
-    partitionToken:
       secretName: consul-partitions-acl-token
       secretKey: token
   peering:

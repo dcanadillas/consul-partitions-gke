@@ -7,5 +7,5 @@ spec:
     name: backend
   sources:
    - name: frontend
-     action: deny
+     action: allow
      partition: default

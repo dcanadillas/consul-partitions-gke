@@ -189,16 +189,6 @@ server:
   replicas: 3
   bootstrapExpect: 3
   # affinity:
-  extraConfig: |
-    {
-      "acl": {
-        "tokens": {
-          "initial_management": "$CONSUL_TOKEN",
-          "dns": "$CONSUL_TOKEN",
-          "agent": "$CONSUL_TOKEN"
-        }
-      }
-    }
 ui:
   enabled: true
   service:
